@@ -1,0 +1,194 @@
+<!--
+
+Reference:
+
+1. https://stackoverflow.com/questions/26015497/how-to-resize-then-crop-an-image-with-canvas
+2. https://stackoverflow.com/questions/2541481/get-average-color-of-image-via-javascript
+3. https://jariz.github.io/vibrant.js/
+
+-->
+<html>
+
+<head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+</head>
+<style>
+    body {
+    margin: 0px;
+    padding: 20px;
+}
+
+#color-blob {
+    margin-top:20px;
+    padding-left:auto;
+    padding-right:auto;
+    text-align: center;
+    border: 1px solid #eeeeee;
+    width: 498px;
+    height: 50px;
+}
+
+button {}
+</style>
+
+<body>
+    <div>
+        <h1>Original Image:</h1>
+        <input type="file" id="input" multiple>
+        <p id="image-attribute" accept="image/png, image/jpeg">null</p>
+        <img id="file-preview" src="example_1.jpg" width="200px" />
+    </div>
+    <div>
+        <h1>Cropped Image:</h1>
+        <button onclick="moveup()">Up</button>
+        <button onclick="movedown()">Down</button>
+        <div id="color-blob">
+            <p id=color-rgb-text></p>
+        </div>
+        <div style="margin-top:20px;">
+            <canvas style="display:none;" id="canvas" width="500"></canvas>
+            <img id="generated" width="500px">
+        </div>
+    </div>
+    </div>
+</body>
+<script>
+var loc_y = 0;
+var processed_src = "example_1.jpg"
+// const selectedFile = document.getElementById('input').files[0];
+const colorThief = new ColorThief();
+
+function moveup() {
+    loc_y -= 1;
+    if (loc_y < 1) {
+        loc_y = 1
+    } else {
+        console.log(loc_y);
+    }
+    imageOnLoadoad();
+}
+
+function movedown() {
+    loc_y += 1;
+    if (loc_y > 9) {
+        loc_y = 9
+    } else {
+        console.log(loc_y);
+    }
+    imageOnLoadoad();
+}
+
+function imageOnLoadoad() {
+    var image = new Image(),
+        canvas = document.getElementById('canvas'),
+        ctx = canvas.getContext('2d'),
+        img_width = 0,
+        img_height = 0;
+
+    image.src = processed_src;
+    image.onload = function() {
+        ctx.drawImage(image,
+            0, (this.height / 10) * loc_y, // Start at 70/20 pixels from the left and the top of the image (crop),
+            this.width, this.height / 10, // "Get" a `50 * 50` (w * h) area from the source image (crop),
+            0, 0, // Place the result at 0, 0 in the canvas,
+            500, 50); // With as width / height: 100 * 100 (scale)
+
+        document.getElementById('image-attribute').innerHTML = "Width: " + this.width + ", Height: " + this.height;
+        var img_generated = new Image();
+        img_generated.src = canvas.toDataURL();
+        document.getElementById('generated').src = img_generated.src;
+
+        setTimeout(function() {
+            const img_togetExtraceted = document.getElementById('generated');
+
+            if (img_togetExtraceted.complete) {
+                var color_extracted = colorThief.getColor(img_togetExtraceted);
+
+                document.getElementById('color-blob').style.backgroundColor = "rgba(" + color_extracted[0] + "," + color_extracted[1] + "," + color_extracted[2] + ",1)";
+
+                document.getElementById('color-rgb-text').innerHTML = "R:" + color_extracted[0] + ", G:" + color_extracted[1] + ", B:" + color_extracted[2];
+            } else {
+                image.addEventListener('load', function() {
+                    console.log(colorThief.getColor(img_togetExtraceted));
+                });
+            }
+        }, 50);
+    }
+}
+
+const inputElement = document.getElementById("input");
+inputElement.addEventListener("change", handleFiles, false);
+
+function handleFiles() {
+
+    if (this.files && this.files[0]) {
+        const fileList = this.files; /* now you can work with the file list */
+        console.log("uploaded");
+        const selectedFile = document.getElementById('input').files[0];
+        console.log(selectedFile);
+        var image = document.getElementById('file-preview');
+        image.src = URL.createObjectURL(event.target.files[0]);
+        console.log(document.getElementById('file-preview').src);
+
+        var FR = new FileReader();
+        FR.addEventListener("load", function(e) {
+            // document.getElementById("img").src       = e.target.result;
+            // console.log(e.target.result);
+            document.getElementById('file-preview').src = e.target.result;
+            processed_src = e.target.result;
+            loc_y = 0;
+            imageOnLoadoad();
+        });
+        FR.readAsDataURL(this.files[0]);
+    }
+}
+
+function getAverageRGB(imgEl) {
+
+    var blockSize = 5, // only visit every 5 pixels
+        defaultRGB = { r: 0, g: 0, b: 0 }, // for non-supporting envs
+        canvas = document.createElement('canvas'),
+        context = canvas.getContext && canvas.getContext('2d'),
+        data, width, height,
+        i = -4,
+        length,
+        rgb = { r: 0, g: 0, b: 0 },
+        count = 0;
+
+    if (!context) {
+        return defaultRGB;
+    }
+
+    height = canvas.height = imgEl.naturalHeight || imgEl.offsetHeight || imgEl.height;
+    width = canvas.width = imgEl.naturalWidth || imgEl.offsetWidth || imgEl.width;
+
+    context.drawImage(imgEl, 0, 0);
+
+    try {
+        data = context.getImageData(0, 0, width, height);
+    } catch (e) {
+        /* security error, img on diff domain */
+        return defaultRGB;
+    }
+
+    length = data.data.length;
+
+    while ((i += blockSize * 4) < length) {
+        ++count;
+        rgb.r += data.data[i];
+        rgb.g += data.data[i + 1];
+        rgb.b += data.data[i + 2];
+    }
+
+    // ~~ used to floor values
+    rgb.r = ~~(rgb.r / count);
+    rgb.g = ~~(rgb.g / count);
+    rgb.b = ~~(rgb.b / count);
+
+    return rgb;
+
+}
+</script>
+
+</html>
