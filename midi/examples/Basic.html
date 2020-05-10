@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <!-- polyfill -->
+    <script src="../inc/shim/Base64.js" type="text/javascript"></script>
+    <script src="../inc/shim/Base64binary.js" type="text/javascript"></script>
+    <script src="../inc/shim/WebAudioAPI.js" type="text/javascript"></script>
+    <!-- midi.js package -->
+    <script src="../js/midi/audioDetect.js" type="text/javascript"></script>
+    <script src="../js/midi/gm.js" type="text/javascript"></script>
+    <script src="../js/midi/loader.js" type="text/javascript"></script>
+    <script src="../js/midi/plugin.audiotag.js" type="text/javascript"></script>
+    <script src="../js/midi/plugin.webaudio.js" type="text/javascript"></script>
+    <script src="../js/midi/plugin.webmidi.js" type="text/javascript"></script>
+    <!-- utils -->
+    <script src="../js/util/dom_request_xhr.js" type="text/javascript"></script>
+    <script src="../js/util/dom_request_script.js" type="text/javascript"></script>
+</head>
+<style>
+    #color-display {
+	border:2px solid rgba(200,200,200,1);
+	height:50px;
+	max-width:400px;
+	margin-top:10px;
+}
+.slidecontainer {
+  width: 100%;
+}
+
+.slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 25px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  background: #4CAF50;
+  cursor: pointer;
+}
+</style>
+<script type="text/javascript">
+	/*
+window.onload = function() {
+    MIDI.loadPlugin({
+        soundfontUrl: "./soundfont/",
+        instrument: "acoustic_grand_piano",
+        onprogress: function(state, progress) {
+            console.log(state, progress);
+        },
+        onsuccess: function() {
+            // 65, 63, 62
+            // 58
+            var delay = 0; // play one note every quarter second
+            var velocity = 127; // how hard the note hits
+            // play the note
+            MIDI.setVolume(0, 127);
+
+            var note = 65; // the MIDI note
+            MIDI.noteOn(0, note, velocity, delay);
+            MIDI.noteOff(0, note, delay + 2);
+        }
+    });
+
+};*/
+
+function hslToRgb(h, s, l) {
+
+    s /= 100;
+    l /= 100;
+
+    let c = (1 - Math.abs(2 * l - 1)) * s,
+        x = c * (1 - Math.abs((h / 60) % 2 - 1)),
+        m = l - c / 2,
+        r = 0,
+        g = 0,
+        b = 0;
+
+    if (0 <= h && h < 60) {
+        r = c;
+        g = x;
+        b = 0;
+    } else if (60 <= h && h < 120) {
+        r = x;
+        g = c;
+        b = 0;
+    } else if (120 <= h && h < 180) {
+        r = 0;
+        g = c;
+        b = x;
+    } else if (180 <= h && h < 240) {
+        r = 0;
+        g = x;
+        b = c;
+    } else if (240 <= h && h < 300) {
+        r = x;
+        g = 0;
+        b = c;
+    } else if (300 <= h && h < 360) {
+        r = c;
+        g = 0;
+        b = x;
+    }
+    r = Math.round((r + m) * 255);
+    g = Math.round((g + m) * 255);
+    b = Math.round((b + m) * 255);
+
+    return r + "," + g + "," + b;
+}
+
+Number.prototype.map = function (in_min, in_max, out_min, out_max) {
+  return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+function setColor() {
+    colorVal = document.getElementById("slider").value;
+    hslVal = hslToRgb(colorVal, 100, 50);
+    console.log(hslToRgb(colorVal, 100, 50));
+    console.log("hello" + document.getElementById("slider").value);
+    document.getElementById("color-display").setAttribute("style", "background-color:rgba(" + hslVal + ",1);");
+
+    MIDI.loadPlugin({
+        soundfontUrl: "./soundfont/",
+        instrument: "acoustic_grand_piano",
+        onprogress: function(state, progress) {
+            console.log(state, progress);
+        },
+        onsuccess: function() {
+            var delay = 0; // play one note every quarter second
+            var velocity = 127; // how hard the note hits
+            // play the note
+            var num = Math.round(colorVal);
+            console.log(num.map(0, 255, 21, 108));
+            var mappingNoteValue = Math.round(num.map(0, 255, 21, 108));
+            console.log("echoing " + mappingNoteValue);
+            MIDI.setVolume(0, 127);
+            var note = mappingNoteValue; // the MIDI note
+            MIDI.noteOn(0, note, velocity, delay);
+            MIDI.noteOff(0, note, delay + 1 );
+        }
+    });
+}
+</script>
+
+<body>
+    <div>
+        Color to Sound Generator
+    </div>
+    <div id="color-display">
+    </div>
+    <div class="slidecontainer">
+        <p>Default range slider:</p>
+        <input id="slider" onclick="setColor()" type="range" min="1" max="255" value="1">
+    </div>
+</body>
+
+</html>
