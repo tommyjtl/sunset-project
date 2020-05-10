@@ -58,7 +58,7 @@ button {}
         <h1 style="margin-bottom:20px;">Original Image:</h1>
         <input type="file" id="input" multiple>
         <p style="margin-top:20px;" id="image-attribute" accept="image/png, image/jpeg">null</p>
-        <img id="file-preview" src="example_1.jpg" width="200px" />
+        <img crossorigin="anonymous" id="file-preview" src="example_1.jpg" width="200px" />
     </div>
     <div style="margin-top:20px;">
         <h1 style="margin-bottom:20px;">Processed Result:</h1>
@@ -71,7 +71,7 @@ button {}
         </div>
         <div style="margin-top:20px;">
             <canvas style="display:none;" id="canvas" width="500"></canvas>
-            <img id="generated" width="500px">
+            <img crossorigin="anonymous" id="generated" width="500px">
         </div>
     </div>
     </div>
