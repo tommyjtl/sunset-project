@@ -10,8 +10,28 @@ Reference:
 <html>
 
 <head>
+    <title>Sunset Project Test #1</title>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+    <!-- polyfill -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+    <script src="midi/inc/shim/Base64.js" type="text/javascript"></script>
+    <script src="midi/inc/shim/Base64binary.js" type="text/javascript"></script>
+    <script src="midi/inc/shim/WebAudioAPI.js" type="text/javascript"></script>
+    <!-- midi.js package -->
+    <script src="midi/js/midi/audioDetect.js" type="text/javascript"></script>
+    <script src="midi/js/midi/gm.js" type="text/javascript"></script>
+    <script src="midi/js/midi/loader.js" type="text/javascript"></script>
+    <script src="midi/js/midi/plugin.audiotag.js" type="text/javascript"></script>
+    <script src="midi/js/midi/plugin.webaudio.js" type="text/javascript"></script>
+    <script src="midi/js/midi/plugin.webmidi.js" type="text/javascript"></script>
+    <!-- utils -->
+    <script src="midi/js/util/dom_request_xhr.js" type="text/javascript"></script>
+    <script src="midi/js/util/dom_request_script.js" type="text/javascript"></script>
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
 </head>
 <style>
     body {
@@ -21,6 +41,7 @@ Reference:
 
 #color-blob {
     margin-top:20px;
+    padding-top:10px;
     padding-left:auto;
     padding-right:auto;
     text-align: center;
@@ -34,15 +55,17 @@ button {}
 
 <body>
     <div>
-        <h1>Original Image:</h1>
+        <h1 style="margin-bottom:20px;">Original Image:</h1>
         <input type="file" id="input" multiple>
-        <p id="image-attribute" accept="image/png, image/jpeg">null</p>
+        <p style="margin-top:20px;" id="image-attribute" accept="image/png, image/jpeg">null</p>
         <img id="file-preview" src="example_1.jpg" width="200px" />
     </div>
-    <div>
-        <h1>Cropped Image:</h1>
-        <button onclick="moveup()">Up</button>
-        <button onclick="movedown()">Down</button>
+    <div style="margin-top:20px;">
+        <h1 style="margin-bottom:20px;">Processed Result:</h1>
+        <button type="button" id="up-btn" class="btn btn-primary" onclick="moveup()">Up</button>
+        <button type="button" id="down-btn" class="btn btn-primary" onclick="movedown()">Down</button>
+        <button type="button" id="play-btn" class="btn btn-primary" onclick="play()">Just Play</button>
+        <span id="current-playing" style="padding-left:10px;">Playing ? of 20 segment.</span>
         <div id="color-blob">
             <p id=color-rgb-text></p>
         </div>
@@ -59,10 +82,43 @@ var processed_src = "example_1.jpg"
 // const selectedFile = document.getElementById('input').files[0];
 const colorThief = new ColorThief();
 
+function RGBToHSL(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+    let cmin = Math.min(r, g, b),
+        cmax = Math.max(r, g, b),
+        delta = cmax - cmin,
+        h = 0,
+        s = 0,
+        l = 0;
+    if (delta == 0) h = 0;
+    else if (cmax == r) h = ((g - b) / delta) % 6;
+    else if (cmax == g) h = (b - r) / delta + 2;
+    else h = (r - g) / delta + 4;
+    h = Math.round(h * 60);
+    if (h < 0) h += 360;
+    l = (cmax + cmin) / 2;
+    s = delta == 0 ? 0 : delta / (1 - Math.abs(2 * l - 1));
+    s = +(s * 100).toFixed(1);
+    l = +(l * 100).toFixed(1);
+
+    var hsl = new Array();
+    hsl[0] = h;
+    hsl[1] = s;
+    hsl[2] = l;
+
+    return hsl;
+}
+
+Number.prototype.map = function(in_min, in_max, out_min, out_max) {
+    return (this - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 function moveup() {
     loc_y -= 1;
     if (loc_y < 1) {
-        loc_y = 1
+        loc_y = 1;
     } else {
         console.log(loc_y);
     }
@@ -71,12 +127,28 @@ function moveup() {
 
 function movedown() {
     loc_y += 1;
-    if (loc_y > 9) {
-        loc_y = 9
+    if (loc_y > 19) {
+        loc_y = 19;
     } else {
         console.log(loc_y);
     }
     imageOnLoadoad();
+}
+
+function play() {
+
+    loc_y = 1;
+
+    console.log("disable all buttons");
+
+    (function myLoop(i) {
+        setTimeout(function() {
+            console.log('hello'); //  your code here         
+            document.getElementById("down-btn").click(); // Click on the checkbox       
+            if (--i) myLoop(i); //  decrement i and call myLoop again if i > 0
+        }, 1000)
+    })(20);
+
 }
 
 function imageOnLoadoad() {
@@ -89,8 +161,8 @@ function imageOnLoadoad() {
     image.src = processed_src;
     image.onload = function() {
         ctx.drawImage(image,
-            0, (this.height / 10) * loc_y, // Start at 70/20 pixels from the left and the top of the image (crop),
-            this.width, this.height / 10, // "Get" a `50 * 50` (w * h) area from the source image (crop),
+            0, (this.height / 20) * loc_y, // Start at 70/20 pixels from the left and the top of the image (crop),
+            this.width, this.height / 20, // "Get" a `50 * 50` (w * h) area from the source image (crop),
             0, 0, // Place the result at 0, 0 in the canvas,
             500, 50); // With as width / height: 100 * 100 (scale)
 
@@ -104,10 +176,41 @@ function imageOnLoadoad() {
 
             if (img_togetExtraceted.complete) {
                 var color_extracted = colorThief.getColor(img_togetExtraceted);
+                var ceR = color_extracted[0];
+                var ceG = color_extracted[1];
+                var ceB = color_extracted[2];
 
-                document.getElementById('color-blob').style.backgroundColor = "rgba(" + color_extracted[0] + "," + color_extracted[1] + "," + color_extracted[2] + ",1)";
+                var convertedHSL = RGBToHSL(ceR, ceG, ceB);
+                var ceH = convertedHSL[0];
+                var ceS = convertedHSL[1];
+                var ceL = convertedHSL[2];
+                console.log(RGBToHSL(ceR, ceG, ceB));
 
-                document.getElementById('color-rgb-text').innerHTML = "R:" + color_extracted[0] + ", G:" + color_extracted[1] + ", B:" + color_extracted[2];
+                document.getElementById('color-blob').style.backgroundColor = "rgba(" + ceR + "," + ceG + "," + ceB + ",1)";
+                document.getElementById('color-rgb-text').innerHTML = "R:" + ceR + ", G:" + ceG + ", B:" + ceB + "  |  H:" + ceH + ", S:" + ceS + ", L:" + ceL;
+
+                document.getElementById('current-playing').innerHTML = "Playing "+ loc_y +" of 20 segment.";
+
+                MIDI.loadPlugin({
+                    soundfontUrl: "./midi/examples/soundfont/",
+                    instrument: "acoustic_grand_piano",
+                    onprogress: function(state, progress) {
+                        console.log(state, progress);
+                    },
+                    onsuccess: function() {
+                        var delay = 0; // play one note every quarter second
+                        var velocity = 127; // how hard the note hits
+                        // play the note
+                        var num = Math.round(convertedHSL[0]);
+                        console.log(num.map(0, 255, 21, 108));
+                        var mappingNoteValue = Math.round(num.map(0, 255, 21, 108));
+                        console.log("echoing " + mappingNoteValue);
+                        MIDI.setVolume(0, 127);
+                        var note = mappingNoteValue; // the MIDI note
+                        MIDI.noteOn(0, note, velocity, delay);
+                        MIDI.noteOff(0, note, delay + 1);
+                    }
+                });
             } else {
                 image.addEventListener('load', function() {
                     console.log(colorThief.getColor(img_togetExtraceted));

@@ -135,6 +135,7 @@ Number.prototype.map = function (in_min, in_max, out_min, out_max) {
 
 function setColor() {
     colorVal = document.getElementById("slider").value;
+    console.log(colorVal);
     hslVal = hslToRgb(colorVal, 100, 50);
     console.log(hslToRgb(colorVal, 100, 50));
     console.log("hello" + document.getElementById("slider").value);
